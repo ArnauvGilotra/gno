@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - The Web UI (`gno serve`) has a favicon: the GNO mark from gno.sh, so its browser tab is easy to find.
+- `gno convert <file>` converts one PDF, Office or other supported file to Markdown without indexing it. The Markdown is the same as indexing would store. `--json` adds the content hash, warnings and detected type; `--max-bytes` refuses larger files before reading them, with a `TOO_LARGE` error.
 
 ## [2.12.0] - 2026-10-12
 
