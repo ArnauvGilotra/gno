@@ -986,19 +986,27 @@ Each collection shows its link workspace, if any (`Links: workspace <folder>
 
 ### gno collection remove
 
-Remove a collection.
+Remove a collection from the config and delete its documents from the index.
 
 ```bash
 gno collection remove notes
 ```
 
+Status, search, and the embedding backlog stop counting the collection at once.
+Run `gno cleanup` afterwards to reclaim the space its content and vectors used.
+
 ### gno collection rename
 
-Rename a collection.
+Rename a collection, then index it under the new name.
 
 ```bash
 gno collection rename notes work-notes
+gno update
 ```
+
+The collection has no documents until `gno update` (or `gno index`) runs.
+Content and embeddings from before the rename are reused unless `gno cleanup`
+ran in between.
 
 ### gno collection clear-embeddings
 
@@ -2147,9 +2155,10 @@ gno status
 gno status --json
 ```
 
-Status lists configured collections only. After `gno collection remove`, the
-collection disappears from status at once, even though its documents stay in
-the index until the next `gno update` removes them.
+Status lists configured collections only, and the embedding backlog counts
+configured collections only. If you delete a collection by editing the config
+file by hand, its documents stay in the index until the next `gno update`,
+`gno index`, or `gno cleanup`; `gno collection remove` deletes them at once.
 
 Each collection in a [link workspace](CONFIGURATION.md#link-workspaces) gets a
 `Link workspace:` line with the workspace folder and whether it was detected
@@ -2258,7 +2267,8 @@ doctor result non-healthy. Doctor never actively starts a connector or model.
 
 ### gno cleanup
 
-Remove orphaned content.
+Remove documents of collections no longer in the config, then orphaned content,
+chunks, and vectors.
 
 ```bash
 gno cleanup

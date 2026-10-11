@@ -242,8 +242,10 @@ the model with `id`, `model`, `dimensions`, `state` (`active`|`shadow`),
 Terminal output prints a `Vector partitions:` block
 unless there is exactly one healthy partition. `collections`, `totalDocuments`
 and `totalChunks` cover configured collections only: a collection removed from
-config (for example by `gno collection remove`) is not reported even while its
-rows remain in the index until the next `gno update`. `totalChunks` counts the
+config is not reported even while its rows remain in the index until the next
+command that syncs collections (`gno update`, `gno index`, `gno cleanup`). The
+embedding backlog likewise counts chunks of configured collections only.
+`gno collection remove` syncs at once, so no rows remain. `totalChunks` counts the
 distinct chunks of active documents; chunks left by deleted documents do not
 count. Per-collection chunk totals remain deduplicated by canonical chunk;
 embedded counts require matching current inputs for every active owner within
@@ -1097,12 +1099,12 @@ for `updateCmd`; without it the command is stopped after 10 minutes.
 
 ### gno collection remove
 
-Remove a collection from the index.
+Remove a collection from the config and the index.
 
 **Synopsis:**
 
 ```bash
-gno collection remove <name>
+gno collection remove <name> [--lock-wait <duration>] [--no-wait]
 ```
 
 **Arguments:**
@@ -1113,12 +1115,19 @@ gno collection remove <name>
 **Behavior:**
 
 - Removes collection from config
-- Marks documents as inactive (does not delete DB rows until `cleanup`)
+- Syncs the index in the same config write: the collection row and its
+  documents are deleted at once, so status, search and the embedding backlog
+  stop counting them without another command
+- Content, chunks and vectors no longer referenced by any document stay until
+  `gno cleanup`
+- Waits for the index write lease (`--lock-wait`, default 120s; `--no-wait`
+  fails at once)
 
 **Exit Codes:**
 
 - 0: Success
-- 1: Collection not found
+- 1: Collection not found or referenced by contexts
+- 2: Config save or index sync failure, or write lease busy
 
 ---
 
@@ -1129,7 +1138,7 @@ Rename a collection.
 **Synopsis:**
 
 ```bash
-gno collection rename <old> <new>
+gno collection rename <old> <new> [--lock-wait <duration>] [--no-wait]
 ```
 
 **Arguments:**
@@ -1138,10 +1147,22 @@ gno collection rename <old> <new>
 | `<old>` | string | Current collection name |
 | `<new>` | string | New collection name |
 
+**Behavior:**
+
+- Renames the collection in config and rewrites contexts scoped to it
+- Syncs the index in the same config write. Documents are keyed by collection
+  name, so the old name's documents are deleted at once and the collection is
+  empty until the next `gno update` (or `gno index`) indexes its files under
+  the new name; content and vectors not yet removed by `gno cleanup` are reused
+- Prints `Run: gno update to index it under the new name`
+- Waits for the index write lease (`--lock-wait`, default 120s; `--no-wait`
+  fails at once)
+
 **Exit Codes:**
 
 - 0: Success
-- 1: Old name not found or new name already exists
+- 1: Old name not found, new name already exists, or new name invalid
+- 2: Config save or index sync failure, or write lease busy
 
 ---
 
@@ -2944,12 +2965,13 @@ included, is refused. JSON output is
 
 ### gno cleanup
 
-Remove orphaned content, chunks, and vectors not referenced by active documents.
+Remove documents of collections no longer in the config, then orphaned
+content, chunks, and vectors not referenced by active documents.
 
 **Synopsis:**
 
 ```bash
-gno cleanup
+gno cleanup [--lock-wait <duration>] [--no-wait]
 ```
 
 **Exit Codes:**
