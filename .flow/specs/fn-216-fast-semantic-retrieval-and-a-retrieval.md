@@ -37,6 +37,19 @@ The vec0 KNN index itself is never used for ranking on an activated partition; `
 - [inferred] `bun run lint:check && bun test`; `bun run eval:hybrid` shows no regression; the memory and sessions gates stay at 100.
 - [inferred] Live QA on `gno serve` + MCP: warm query latency from the Web UI and an MCP client, captured.
 
+## Fallbacks if R3 is missed
+<!-- scope: technical -->
+
+Use in this order, stopping once the targets hold; record which were needed and the measured effect of each in the PR. [user] [inferred]
+
+1. Compute distances for all of a query's vector variants in one pass instead of one search per variant.
+2. Rank unscoped searches with the vec0 KNN index (`MATCH … k`), keeping the exact eligible-set scan for scoped or filtered searches; prove parity for both paths.
+3. A vec0 partition key per collection, so a scoped search reads only that collection's rows.
+4. Repack a fragmented vec0 table when well under 90% of its rows are live.
+5. `ANALYZE` / `PRAGMA optimize` after large index runs, if a query plan shows missing statistics.
+6. A resident in-memory exact scan for `serve`/`daemon`/`mcp` (shared buffer, worker threads, falls back to SQLite when stale); only if 1-5 cannot meet the warm target.
+7. If the non-vector stages (expansion, rerank) keep balanced `query` above 2-3 s, state the measured number in the skill and docs rather than widening this spec.
+
 ## Boundaries
 <!-- scope: business -->
 

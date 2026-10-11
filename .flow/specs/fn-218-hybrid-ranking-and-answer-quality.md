@@ -24,6 +24,17 @@ Once semantic search is fast (fast-semantic-retrieval spec), hybrid ranking has 
 - [inferred] Answer-prompt unit test for the date frame; the ask eval shows no regression.
 - [inferred] `bun run lint:check && bun test`.
 
+## If no hypothesis wins
+<!-- scope: technical -->
+
+Keep today's ranking and record the negative results. Candidate follow-ups, each needing its own measurement before a spec: [inferred]
+
+- Rerank score first with fusion rank as tie-break (the strongest external result), if the monotonic blend loses.
+- Frontmatter text as its own weighted FTS column.
+- Evidence passages fitted to the reranker's token budget around the match, instead of a 4000-char prefix.
+- Question-shaped input on the BM25 leg matched as any-term rather than all-terms (check current behaviour first).
+- Expansion dedupe on the cached-expansion path (check first).
+
 ## Boundaries
 <!-- scope: business -->
 
