@@ -4,7 +4,7 @@
   "completion_reviewed_at": null,
   "created_at": "2026-10-11T15:12:15.398338Z",
   "default_impl": null,
-  "default_review": null,
+  "default_review": "codex:gpt-6.1-sol:high",
   "default_sync": null,
   "depends_on_epics": [
     "fn-216-fast-semantic-retrieval-and-a-retrieval"
@@ -16,6 +16,7 @@
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "ready": true,
   "spec_path": ".flow/specs/fn-218-hybrid-ranking-and-answer-quality.md",
   "status": "open",
   "title": "Hybrid ranking and answer quality",
@@ -30,5 +31,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-11T15:16:53.624494Z"
+  "updated_at": "2026-10-11T19:33:34.936045Z"
 }

@@ -4,7 +4,7 @@
   "completion_reviewed_at": null,
   "created_at": "2026-10-11T15:12:15.050139Z",
   "default_impl": null,
-  "default_review": null,
+  "default_review": "codex:gpt-6.1-sol:high",
   "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-217-correctness-fixes-missing-collection",
@@ -14,6 +14,7 @@
   "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "ready": true,
   "spec_path": ".flow/specs/fn-217-correctness-fixes-missing-collection.md",
   "status": "open",
   "title": "Correctness fixes: missing collection roots and unknown MCP arguments",
@@ -28,5 +29,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-11T15:16:48.946953Z"
+  "updated_at": "2026-10-11T19:33:34.639786Z"
 }
