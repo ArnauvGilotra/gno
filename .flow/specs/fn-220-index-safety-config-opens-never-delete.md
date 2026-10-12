@@ -27,6 +27,10 @@ Defects that surfaced during the GNO 2.11.0 release and rollout (2026-10-11/12),
 9. **`ask.eval.ts` scores 50% with 0 citations on every case.** Since a001949d (2026-07-23) `generateGroundedAnswer` (src/pipeline/answer.ts:568) skips sources without `sourceHash`/`mirrorHash` or a hash-verified passage; the eval's mocks (evals/ask.eval.ts ~133) carry none and pass `store: null`, so no model is ever called and the score is the skipped judge (1) plus zero citations. After fixing the mocks, generation fails with `INFERENCE_FAILED: Native worker failure: exited` because src/llm/native-worker/client.ts:317,331 use `import.meta.dir` (undefined under vitest) and the catch around line 300 hides the TypeError. With both fixed the eval scored 77% offline and 15 of 24 cases cited. Residual signal, out of scope: the balanced preset (Qwen2.5-3B) answers without `[n]` markers on 7 of 8 cases and abstains.
 10. **The agentic eval `--write` lane cannot pass.** `evals/agentic/lifecycle/gno-mcp.ts:199` counts `content_vectors WHERE model = ?` after a real `gno embed`, but since 2.7.0 embeddings live in `vector_variants` under an activated partition (`test/cli/vec-partition.test.ts:101` asserts `content_vectors` stays empty). Isolated repro: `gno_vector_preparation_mismatch ... vectors=0 chunks=34` while `getStatus({ embedModel })` reports 34 embedded, backlog 0. The other `content_vectors` readers (evals/acceptance/eligible-scaling.ts:243, evals/helpers/retrieval-candidate-benchmark.ts:483, evals/fixtures/acceptance/ingestion-identity/oracle.ts) write legacy rows themselves and are correct; `doctor`, `vec` and `status` use the partition path and are correct.
 
+### Open security alerts on main
+
+11. GitHub Dependabot reports three open alerts against direct dependencies (2026-10-12): `@modelcontextprotocol/client` 2.0.0 (high: the OAuth client could send credentials to an authorization server chosen by the MCP server; fixed in 2.2.0), `sharp` 0.35.4 (high: librsvg CVE-2026-96889; fixed in 0.35.5) and `vitest` 4.1.10 (moderate, dev only: path traversal via the mocker redirect; fixed in 4.1.11). `@modelcontextprotocol/server` is pinned in lockstep with the client.
+
 ## Acceptance Criteria
 
 - **R1:** Opening an index never deletes a collection or its documents. Read and update paths only upsert the collections their config lists. Deleting a collection's index data happens only through the explicit removal paths (`gno collection remove`/`rename`, MCP/REST remove, `gno cleanup`), which keep their current behavior, except that `gno cleanup` names each collection it is about to drop (text and JSON) before dropping it.
@@ -40,6 +44,7 @@ Defects that surfaced during the GNO 2.11.0 release and rollout (2026-10-11/12),
 - **R9:** `bun run eval:memory` exits 0 at its 100% gate within 2 minutes, and an eval file that throws makes evalite exit non-zero instead of hanging (patch the pinned evalite reporter with `bun patch`, and report it upstream). Every GNO module that resolves its own path or directory works when `import.meta.path`/`import.meta.dir` are undefined, through one shared helper (file-processor, native-worker client, spa-production-build, sessions import-child, runtime-entrypoint, setup-semantic). A native worker start failure reports its cause, not only "exited".
 - **R10:** `evals/ask.eval.ts` calls the model on every case offline: its sources carry the hashes and store content that grounded answers require. The run records a non-zero citation count for at least one preset; the judge stays optional.
 - **R11:** The agentic `--write` lane's GNO MCP preparation verifies embeddings through the product's own status (`getStatus({ embedModel })`: no backlog, embedded count equals the active chunk count, an activated vector partition exists) instead of the legacy `content_vectors` table.
+- **R13:** Dependencies are bumped to fixed versions, pinned exactly: `@modelcontextprotocol/client` and `@modelcontextprotocol/server` to 2.3.1 (same version for both), `sharp` to 0.35.5, `vitest` to 4.1.11 (stays on 4.x, which the pinned evalite targets). `bun install --frozen-lockfile` passes, MCP stdio and HTTP transports and image conversion are exercised in tests and live QA, and the three Dependabot alerts close after merge.
 - **R12:** Regression tests for R1-R8 (the two-client repro, a CLI `--config` search, cleanup naming, agents update on a file without a block, skill install with `CLAUDE_CONFIG_DIR`, a missing root in status/doctor, snippet order/range parity, the Fast request path, the v2 projection); docs (CLI, SDK, CONFIGURATION, TROUBLESHOOTING, WEB-UI, MCP, skill/agents sections), spec/cli.md, spec/mcp.md, output schemas where JSON shapes change, CHANGELOG, and the gno.sh docs updated.
 
 ## Verification
@@ -51,7 +56,7 @@ Defects that surfaced during the GNO 2.11.0 release and rollout (2026-10-11/12),
 - Search timing on a fresh copy of a real index (never the live one): long-question `gno search --json` under 300 ms, results identical to 2.11.0 in order and score.
 - Live QA: Web UI Fast on a sandbox index with vectors sends `/api/query` (network capture); MCP `gno_context` text for a Capsule citing a superseded memory fact shows v2 with the successor URI and date.
 - `timeout 120 bun run eval:memory` passes at 100%; `bun run eval` with ask.eval shows real generation and citations; the agentic preparation step passes on its fixture.
-- `bun run lint:check && bun test`.
+- `bun run lint:check && bun test`; Dependabot shows no open alerts for the bumped packages after merge.
 
 ## Boundaries
 
