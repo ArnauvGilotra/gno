@@ -1,0 +1,24 @@
+{
+  "branch_name": "fn-220-index-safety-config-opens-never-delete",
+  "created_at": "2026-10-12T01:20:47.734967Z",
+  "depends_on_epics": [],
+  "id": "fn-220-index-safety-config-opens-never-delete",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-220-index-safety-config-opens-never-delete.md",
+  "status": "open",
+  "title": "Index safety: config opens never delete collections; agents update and skill install targets",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-10-12T01:20:47.739057Z"
+}
