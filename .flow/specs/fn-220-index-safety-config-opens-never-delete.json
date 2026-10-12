@@ -8,7 +8,7 @@
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-220-index-safety-config-opens-never-delete.md",
   "status": "open",
-  "title": "Index safety: config opens never delete collections; agents update and skill install targets",
+  "title": "Index safety, missing-root status, search speed, agent Capsule dates and eval fixes",
   "tracker": {
     "baseHashFlow": null,
     "baseHashTracker": null,
@@ -20,5 +20,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-10-12T01:20:47.739057Z"
+  "updated_at": "2026-10-12T08:30:49.790784Z"
 }
