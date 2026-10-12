@@ -78,6 +78,7 @@ import {
   refreshContextFile,
 } from "../app/compiled-context-files";
 import {
+  decorateResultUris,
   decorateUriForIndex,
   DEFAULT_INDEX_NAME,
   getIndexDbPath,
@@ -140,6 +141,7 @@ import {
   type MemoryErrorCode,
   MemoryService,
 } from "../core/memory";
+import { readMetadataSummary } from "../core/metadata-discovery";
 import { resolveNoteCreatePlan } from "../core/note-creation";
 import { resolveNotePreset } from "../core/note-presets";
 import {
@@ -701,10 +703,9 @@ class GnoClientImpl implements GnoClient {
   private decorateSearchResults(results: SearchResults): SearchResults {
     return {
       ...results,
-      results: results.results.map((result) => ({
-        ...result,
-        uri: decorateUriForIndex(result.uri, this.indexName),
-      })),
+      results: results.results.map((result) =>
+        decorateResultUris(result, this.indexName)
+      ),
     };
   }
 
@@ -1415,6 +1416,14 @@ class GnoClientImpl implements GnoClient {
       const decorated = {
         ...result,
         uri: decorateUriForIndex(result.uri, scoped.indexName),
+        ...(result.supersededBy
+          ? {
+              supersededBy: decorateUriForIndex(
+                result.supersededBy,
+                scoped.indexName
+              ),
+            }
+          : {}),
       };
       const traceMetadata = getRetrievalTraceMetadata(result);
       if (traceMetadata) {
@@ -1458,6 +1467,14 @@ class GnoClientImpl implements GnoClient {
         documents: result.documents.map((doc) => ({
           ...doc,
           uri: decorateUriForIndex(doc.uri, scoped.indexName),
+          ...(doc.supersededBy
+            ? {
+                supersededBy: decorateUriForIndex(
+                  doc.supersededBy,
+                  scoped.indexName
+                ),
+              }
+            : {}),
         })),
       };
     } finally {
@@ -1475,6 +1492,17 @@ class GnoClientImpl implements GnoClient {
         uri: decorateUriForIndex(doc.uri, this.indexName),
       })),
     };
+  }
+
+  async listMetadata(options: { collection?: string; values?: number } = {}) {
+    this.assertOpen();
+    try {
+      return await readMetadataSummary(this.store, options);
+    } catch (cause) {
+      if (cause instanceof RangeError)
+        throw sdkError("VALIDATION", cause.message);
+      throw cause;
+    }
   }
 
   async changes(

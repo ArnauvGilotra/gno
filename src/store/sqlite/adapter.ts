@@ -3693,9 +3693,89 @@ export class SqliteAdapter implements StorePort, SqliteDbProvider {
   }
 
   /**
-   * Get tag counts across all active documents.
-   * Optionally filter by collection or tag prefix.
+   * Map each superseded memory fact's URI to the end of its supersession
+   * chain. Input URIs may carry `?index=`; keys are the URIs as given and
+   * successors are canonical (undecorated).
    */
+  async getSupersedingUris(
+    uris: string[]
+  ): Promise<StoreResult<Map<string, string>>> {
+    try {
+      const db = this.ensureOpen();
+      const successorOf = db.query<
+        { uri: string; successor: string },
+        [string]
+      >(`
+        SELECT p.uri AS uri, s.uri AS successor
+        FROM documents p
+        JOIN doc_edges e ON e.dst_doc_id = p.id AND e.edge_type = 'supersedes'
+        JOIN documents s ON s.id = e.src_doc_id AND s.active = 1
+        WHERE p.uri IN (SELECT value FROM json_each(?))
+        ORDER BY s.id
+      `);
+      const canonical = new Map(uris.map((uri) => [uri, stripUriIndex(uri)]));
+      const next = new Map<string, string>();
+      const seen = new Set(canonical.values());
+      let frontier = [...seen];
+      while (frontier.length > 0) {
+        const discovered: string[] = [];
+        for (const row of successorOf.all(JSON.stringify(frontier))) {
+          next.set(row.uri, row.successor);
+          if (!seen.has(row.successor)) {
+            seen.add(row.successor);
+            discovered.push(row.successor);
+          }
+        }
+        frontier = discovered;
+      }
+      const result = new Map<string, string>();
+      for (const [input, uri] of canonical) {
+        const visited = new Set([uri]);
+        let current = next.get(uri);
+        while (current && next.has(current) && !visited.has(current)) {
+          visited.add(current);
+          current = next.get(current);
+        }
+        if (current && current !== uri) result.set(input, current);
+      }
+      return ok(result);
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to read supersession",
+        cause
+      );
+    }
+  }
+
+  async getTypedMetadataDocuments(options?: {
+    collection?: string;
+  }): Promise<StoreResult<{ documents: number; metadata: string[] }>> {
+    try {
+      const db = this.ensureOpen();
+      const scope = options?.collection ? " AND collection = ?" : "";
+      const params = options?.collection ? [options.collection] : [];
+      const documents = db
+        .query<{ count: number }, string[]>(
+          `SELECT count(*) AS count FROM documents WHERE active = 1${scope}`
+        )
+        .get(...params)!.count;
+      const metadata = db
+        .query<{ typed_metadata: string }, string[]>(
+          `SELECT typed_metadata FROM documents WHERE active = 1 AND typed_metadata IS NOT NULL${scope}`
+        )
+        .all(...params)
+        .map((row) => row.typed_metadata);
+      return ok({ documents, metadata });
+    } catch (cause) {
+      return err(
+        "QUERY_FAILED",
+        cause instanceof Error ? cause.message : "Failed to read metadata",
+        cause
+      );
+    }
+  }
+
   async getTagCounts(options?: {
     collection?: string;
     prefix?: string;

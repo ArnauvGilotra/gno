@@ -11,6 +11,7 @@ import type { ContextCapsuleVerification } from "./context-capsule-verification"
 
 import { decorateUriForIndex, deriveDocid } from "../app/constants";
 import { chunkMatchesCanonicalContent } from "../pipeline/chunk-lookup";
+import { ok } from "../store/types";
 import { type ContextCapsuleCreateOptions } from "./context-capsule";
 import { sha256Text } from "./context-capsule-validation";
 import {
@@ -35,6 +36,7 @@ type ContextVerifierStore = Pick<
   | "getCollections"
   | "getContexts"
   | "getDocumentsByDocids"
+  | "getSupersedingUris"
 > &
   Required<Pick<StorePort, "getContentBatch">>;
 
@@ -127,6 +129,8 @@ interface LoadedEvidence {
   chunksByHash: Map<string, ChunkRow[]>;
   documents: DocumentRow[];
   snapshot: ContextEvidenceSnapshot;
+  /** Current successor URI of evidence whose memory fact was superseded. */
+  successors: ReadonlyMap<string, string>;
 }
 
 const missingReceipt = (evidence: Evidence): EvidenceReceipt => ({
@@ -229,6 +233,8 @@ const verifyContent = (
     contentCode = "chunk_missing";
   } else if (!chunkValid) {
     contentCode = "chunk_corrupt";
+  } else if (loaded.successors.has(evidence.uri)) {
+    contentCode = "superseded";
   }
 
   return {
@@ -374,16 +380,23 @@ export const verifyContextCapsule = async (
       )
     ),
   ];
-  const [documentResult, contentResult, chunkResult, rankResult] =
+  const [documentResult, contentResult, chunkResult, rankResult, successors] =
     await Promise.all([
       deps.store.getDocumentsByDocids(docids, { activeOnly: true }),
       deps.store.getContentBatch(mirrorHashes),
       deps.store.getChunksBatch(mirrorHashes),
       deps.resolveCurrentRanks?.(structuredClone(capsule)).catch(() => null) ??
         Promise.resolve(null),
+      deps.store.getSupersedingUris?.([...evidenceUris]) ??
+        Promise.resolve(ok(new Map<string, string>())),
     ]);
   const loaded: LoadedEvidence = {
     snapshot: before,
+    successors: unwrapStore(
+      successors,
+      "document_load_failed",
+      "Failed to load supersession of verification evidence"
+    ),
     documents: unwrapStore(
       documentResult,
       "document_load_failed",

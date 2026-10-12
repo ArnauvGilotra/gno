@@ -156,7 +156,7 @@ the resident gateway applies one profile to every connected client.
 
 | Profile          | Without `--enable-write`                                                                              | With `--enable-write`                                   |
 | ---------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `full` (default) | Every read tool below (37)                                                                            | Every read tool plus every write tool (59)              |
+| `full` (default) | Every read tool below (38)                                                                            | Every read tool plus every write tool (60)              |
 | `core`           | `gno_query`, `gno_search`, `gno_get`, `gno_multi_get`, `gno_context`, `gno_changes`, `gno_recall` (7) | The 7 read tools plus `gno_capture`, `gno_remember` (9) |
 
 Both lists are exact: `core` advertises nothing else, and `full` is byte-for-byte
@@ -1939,6 +1939,27 @@ paths or session content.
 `SESSIONS_NOT_CONFIGURED`; `SESSIONS_BUSY` when another import holds the
 archive lock; `SESSIONS_RUNTIME_FAILURE` (fixed, path-free message) for filesystem or
 index failures.
+
+### gno_list_metadata
+
+List the typed metadata keys indexed documents carry, with observed types,
+document counts and most common values (array members count individually).
+
+**Input Schema:**
+
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "collection": { "type": "string" },
+    "values": { "type": "integer", "minimum": 1, "maximum": 100 }
+  }
+}
+```
+
+**Output Schema:** `gno://schemas/metadata-summary`. Text content is the same
+summary as `gno metadata`. Full profile only.
 
 ### gno_list_tags
 

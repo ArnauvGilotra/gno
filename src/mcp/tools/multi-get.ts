@@ -16,6 +16,7 @@ import {
   type RecordEvidenceMetadata,
 } from "../../core/record-metadata";
 import { parseRef } from "../../core/ref-parser";
+import { supersedingUri } from "../../pipeline/result-context";
 import { openScopedIndexStore } from "../../store/sqlite/scoped-index";
 import { runTool, type ToolResult } from "./index";
 
@@ -27,6 +28,8 @@ interface MultiGetInput {
 }
 
 interface DocumentResult {
+  /** URI of the current fact when a newer memory fact superseded this one. */
+  supersededBy?: string;
   docid: string;
   uri: string;
   title?: string;
@@ -107,6 +110,9 @@ function formatMultiGetResponse(data: MultiGetResponse): string {
     lines.push(`=== ${doc.uri} ===`);
     if (doc.title) {
       lines.push(`Title: ${doc.title}`);
+    }
+    if (doc.supersededBy) {
+      lines.push(`Superseded by: ${doc.supersededBy}`);
     }
     lines.push(
       `Lines: ${doc.totalLines}${doc.truncated ? " (truncated)" : ""}`
@@ -250,7 +256,16 @@ export function handleMultiGet(
             }
           }
 
+          const successor = await supersedingUri(scoped.store, doc.uri);
           documents.push({
+            ...(successor
+              ? {
+                  supersededBy: decorateUriForIndex(
+                    successor,
+                    scoped.indexName
+                  ),
+                }
+              : {}),
             docid: doc.docid,
             uri: decorateUriForIndex(doc.uri, scoped.indexName),
             title: doc.title ?? undefined,

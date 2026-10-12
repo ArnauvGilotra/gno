@@ -2481,6 +2481,11 @@ function wireRetrievalCommands(program: Command): void {
         );
       }
 
+      // Terminal output is the raw content; the mark goes to stderr so
+      // piping the document stays byte-exact.
+      if (format === "terminal" && result.data.supersededBy) {
+        process.stderr.write(`Superseded by: ${result.data.supersededBy}\n`);
+      }
       process.stdout.write(
         `${formatGet(result, {
           lineNumbers: Boolean(cmdOpts.lineNumbers),
@@ -4184,6 +4189,46 @@ function wireAgentsCommands(program: Command): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function wireTagsCommands(program: Command): void {
+  program
+    .command("metadata")
+    .description(
+      "List typed metadata keys with their types, document counts and common values"
+    )
+    .option("-c, --collection <name>", "only documents in this collection")
+    .option(
+      "--values <n>",
+      "common values listed per key (1-100, default 10)",
+      (value) => Number(value)
+    )
+    .option("--json", "JSON output")
+    .option("--md", "Markdown output")
+    .action(async (cmdOpts: Record<string, unknown>) => {
+      const format = getFormat(cmdOpts);
+      assertFormatSupported(CMD.metadataList, format);
+      const globals = getGlobals();
+      const { metadataList, formatMetadataList } =
+        await import("./commands/metadata");
+      const result = await metadataList({
+        configPath: globals.config,
+        indexName: globals.index,
+        collection: cmdOpts.collection as string | undefined,
+        values: cmdOpts.values as number | undefined,
+      });
+      if (!result.success) {
+        throw new CliError(
+          result.isValidation ? "VALIDATION" : "RUNTIME",
+          result.error
+        );
+      }
+      await writeOutput(
+        formatMetadataList(result.data, {
+          json: format === "json",
+          md: format === "md",
+        }),
+        format
+      );
+    });
+
   const tagsCmd = program.command("tags").description("Manage document tags");
 
   // tags list
