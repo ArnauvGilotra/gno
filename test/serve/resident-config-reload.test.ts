@@ -22,6 +22,7 @@ import type { ResidentRuntime } from "../../src/serve/resident-runtime";
 import { saveConfigToPath } from "../../src/config";
 import { DEFAULT_FTS_TOKENIZER } from "../../src/config/types";
 import { HttpMcpTransport } from "../../src/mcp/http-transport";
+import { createGnoClient } from "../../src/sdk";
 import { handleResidentRead } from "../../src/serve/resident-request";
 import { startResidentRuntime } from "../../src/serve/resident-runtime";
 import { handleSearch, handleStatus } from "../../src/serve/routes/api";
@@ -130,7 +131,7 @@ async function mcpStatus(resident: ResidentRuntime): Promise<string[]> {
   }
 }
 
-test("a resident adopts collections removed and added in its config file", async () => {
+test("a resident keeps a hand-removed collection and adopts added ones", async () => {
   const started = await startResidentRuntime({
     configPath,
     index: "reload",
@@ -145,23 +146,69 @@ test("a resident adopts collections removed and added in its config file", async
     "gno://beta/beta.md",
   ]);
 
-  // Removed by hand while the resident runs.
+  // Removed by hand while the resident runs: nothing is deleted, and reads
+  // fail naming the collection until it is added back or cleaned up.
   await saveConfigToPath(configWith("alpha"), configPath);
-  expect(await apiStatus(runtime)).toEqual(["alpha"]);
-  expect(await mcpStatus(runtime)).toEqual(["alpha"]);
-  expect(await searchHits(runtime)).toEqual(["gno://alpha/alpha.md"]);
-  expect(runtime.watchService.getState().expectedCollections).toEqual([
-    "alpha",
-  ]);
+  const refused = await read(runtime, () => new Response("unreachable"));
+  expect(refused.status).toBe(409);
+  expect(JSON.stringify(await refused.json())).toContain("beta (1 document)");
 
-  // Added (as `gno collection add` writes it).
-  await saveConfigToPath(configWith("alpha", "gamma"), configPath);
-  expect(await mcpStatus(runtime)).toEqual(["alpha", "gamma"]);
-  expect(await apiStatus(runtime)).toEqual(["alpha", "gamma"]);
-  expect(runtime.watchService.getState().expectedCollections.sort()).toEqual([
-    "alpha",
-    "gamma",
+  // Added back, plus a new one (as `gno collection add` writes it).
+  await saveConfigToPath(configWith("alpha", "beta", "gamma"), configPath);
+  expect(await mcpStatus(runtime)).toEqual(["alpha", "beta", "gamma"]);
+  expect(await apiStatus(runtime)).toEqual(["alpha", "beta", "gamma"]);
+  expect(await searchHits(runtime)).toEqual([
+    "gno://alpha/alpha.md",
+    "gno://beta/beta.md",
   ]);
+  expect(
+    runtime.watchService
+      .getState()
+      .expectedCollections.sort((a, b) => a.localeCompare(b))
+  ).toEqual(["alpha", "beta", "gamma"]);
+});
+
+test("over MCP, status still answers and retrieval names a collection another client indexed", async () => {
+  const started = await startResidentRuntime({
+    configPath,
+    index: "reload",
+    offline: true,
+  });
+  if (!started.success) throw new Error(started.error);
+  runtime = started.runtime;
+  await runtime.syncAll({ triggerEmbed: false });
+
+  // Another client with a wider config indexes gamma into the same index.
+  const wider = await createGnoClient({
+    config: configWith("alpha", "beta", "gamma"),
+    dbPath: join(root, "gno-data", "index-reload.sqlite"),
+    indexName: "reload",
+  });
+  try {
+    await wider.update();
+  } finally {
+    await wider.close();
+  }
+
+  expect(await mcpStatus(runtime)).toEqual(["alpha", "beta"]);
+  transport ??= new HttpMcpTransport(runtime, { enableWrite: false });
+  const http = transport;
+  const client = new Client({ name: "config-reload", version: "1.0.0" });
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL("http://127.0.0.1:3000/mcp"), {
+      fetch: (input, init) => http.handleRequest(new Request(input, init)),
+    })
+  );
+  try {
+    const search = (await client.callTool({
+      name: "gno_search",
+      arguments: { query: "zebra" },
+    })) as { isError?: boolean; content: Array<{ text: string }> };
+    expect(search.isError).toBe(true);
+    expect(search.content[0]?.text).toContain("gamma (1 document)");
+  } finally {
+    await client.close();
+  }
 });
 
 test("an unreadable config file is an error, never served stale", async () => {

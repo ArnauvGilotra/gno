@@ -6,7 +6,7 @@
  * @module src/cli/commands/cleanup
  */
 
-import type { CleanupStats } from "../../store/types";
+import type { CleanupStats, StaleCollection } from "../../store/types";
 
 import { getIndexDbPath } from "../../app/constants";
 import { isInitialized, loadConfig } from "../../config";
@@ -20,14 +20,26 @@ export interface CleanupOptions {
   configPath?: string;
   /** Index name */
   indexName?: string;
+  /** Called with the collections about to be deleted, before deleting them. */
+  onDropping?: (collections: StaleCollection[]) => void;
 }
 
 /**
  * Result of cleanup command.
  */
 export type CleanupResult =
-  | { success: true; stats: CleanupStats }
-  | { success: false; error: string };
+  | {
+      success: true;
+      stats: CleanupStats;
+      /** Indexed collections the config omits, deleted by this cleanup. */
+      droppedCollections: StaleCollection[];
+    }
+  | {
+      success: false;
+      error: string;
+      /** Collections already deleted when a later step failed. */
+      droppedCollections?: StaleCollection[];
+    };
 
 /**
  * Execute gno cleanup command.
@@ -64,17 +76,32 @@ export async function cleanup(
   try {
     // Drop collections no longer in the config first (their documents follow
     // by cascade), so their content, chunks and vectors count as orphans.
-    const syncResult = await store.syncCollections(config.collections);
+    // This is the explicit removal path; it names what it deletes.
+    const stale = await store.listStaleCollections(
+      config.collections.map(({ name }) => name)
+    );
+    if (!stale.ok) {
+      return { success: false, error: stale.error.message };
+    }
+    const droppedCollections = stale.value;
+    if (droppedCollections.length > 0) options.onDropping?.(droppedCollections);
+    const syncResult = await store.syncCollections(config.collections, {
+      remove: "stale",
+    });
     if (!syncResult.ok) {
       return { success: false, error: syncResult.error.message };
     }
 
     const cleanupResult = await store.cleanupOrphans();
     if (!cleanupResult.ok) {
-      return { success: false, error: cleanupResult.error.message };
+      return {
+        success: false,
+        error: cleanupResult.error.message,
+        droppedCollections,
+      };
     }
 
-    return { success: true, stats: cleanupResult.value };
+    return { success: true, stats: cleanupResult.value, droppedCollections };
   } finally {
     await store.close();
   }
@@ -117,4 +144,17 @@ export function formatCleanup(result: CleanupResult): string {
   lines.push(`Total removed: ${total}`);
 
   return lines.join("\n");
+}
+
+/** Lines naming the collections cleanup is about to delete. */
+export function formatDroppingCollections(
+  collections: readonly StaleCollection[]
+): string {
+  return [
+    "Deleting collections not in this config:",
+    ...collections.map(
+      (c) =>
+        `  ${c.name}: ${c.documents} ${c.documents === 1 ? "document" : "documents"}`
+    ),
+  ].join("\n");
 }
