@@ -9,7 +9,7 @@ problem_type: runtime-error
 symptoms: POST /api/ask aborts serve with 'pure virtual method called' during generation; llama.cpp GGML_ASSERT seen same day in standalone query
 root_cause: Unconfirmed; same abort signature as the documented fn-132 concurrent native-worker crash
 resolution_type: fix
-last_audited: "2026-10-05"
+last_audited: "2026-10-16"
 ---
 
 During fn-121 docs-example regeneration (2026-08-30, gno 1.36.1), `POST /api/ask` crashed the `gno serve` process with a native `pure virtual method called` abort during answer generation. Environment: throwaway GNO home (`GNO_CONFIG_DIR`/`GNO_DATA_DIR`/`GNO_CACHE_DIR` in /tmp), 9-doc fixture corpus, models symlinked from `~/.cache/gno/models`. Search/query/get/docs/collections endpoints on the same instance kept working. It was not reproduced against a normal home.

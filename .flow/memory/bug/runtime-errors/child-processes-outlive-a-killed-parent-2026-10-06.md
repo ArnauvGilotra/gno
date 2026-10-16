@@ -7,8 +7,9 @@ module: src/sessions/import-child.ts
 tags: [soak, fn-203, fn-207]
 problem_type: runtime-error
 symptoms: "serve, session import child and updateCmd keep running after their parent is killed"
-root_cause: no parent-death handling or process-group teardown for these children (confirmed by soak torture)
+root_cause: no parent-death handling or process-group teardown for these children
 resolution_type: fix
+last_audited: "2026-10-16"
 related_to: [bug/runtime-errors/detached-daemon-ignores-sigterm-during-2026-10-06, bug/runtime-errors/stdio-gno-mcp-fails-to-start-while-a-2026-10-06]
 ---
 
@@ -34,3 +35,13 @@ Evidence: `bun run soak --tier torture --classes desktop-shell-kill,session-impo
 ## Boundaries
 
 - macOS has no parent-death signal; the lifeline approach must work there too. Linux may use PR_SET_PDEATHSIG as the file-processor child already does.
+
+## Resolution (b99ee3e1, #291, fn-207)
+
+The chosen approach is a stdin lifeline on every platform, not pid polling:
+
+1. **Desktop shell to serve.** The shell starts `serve` with `GNO_PARENT_LIFELINE=stdin` and holds a stdin pipe open; `serve` shuts down on stdin EOF (`src/serve/parent-lifeline.ts`). `stopServeProcess` waits for its SIGTERM and escalates (`desktop/electrobun-shell/src/bun/serve-process.ts`).
+2. **Serve to session import child.** The import child treats stdin EOF as parent death, `killImportChildren()` runs on resident shutdown, and `SESSION_IMPORT_TIMEOUT_MS` (30 min) bounds each import (`src/sessions/import-child.ts`).
+3. **CLI to `updateCmd`.** `runUpdateCmd` (`src/ingestion/sync.ts`) runs the command in its own process group (detached spawn), with `UPDATE_CMD_TIMEOUT_MS` (10 min) overridable per collection by `updateCmdTimeoutMs`.
+
+The file-processor child still uses PR_SET_PDEATHSIG on Linux (`src/ingestion/file-child.ts`).

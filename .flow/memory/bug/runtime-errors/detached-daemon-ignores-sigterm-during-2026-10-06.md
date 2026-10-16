@@ -3,12 +3,13 @@ title: Detached daemon ignores SIGTERM during startup
 date: "2026-10-06"
 track: bug
 category: runtime-errors
-module: src/cli/detach.ts
+module: src/cli/program.ts
 tags: [soak, fn-203, fn-206]
 problem_type: runtime-error
 symptoms: daemon --stop right after --detach waits 12 s and SIGKILLs
-root_cause: (observed 3/3; startup window ignores SIGTERM - mechanism unconfirmed)
+root_cause: pid-file cleanup SIGTERM/SIGINT listeners disabled default termination before the resident shutdown handler was installed
 resolution_type: fix
+last_audited: "2026-10-16"
 related_to: [bug/runtime-errors/stdio-gno-mcp-fails-to-start-while-a-2026-10-06]
 ---
 
@@ -25,3 +26,11 @@ Reproduced 3 of 3 times (with and without `--no-sync-on-start`), and by the fn-2
 - **R1:** A detached daemon or serve that receives SIGTERM at any point during startup exits within the shutdown budget without escalation, releasing its locks and pid file.
 - **R2:** A regression test runs `--detach` then immediately `--stop` and asserts a SIGTERM stop (not SIGKILL) well under 12 s.
 - **R3:** The soak smoke tier's detach cycle passes I5.
+
+## Resolution (9736132c, #289, fn-206)
+
+Root cause confirmed: `installPidFileCleanup` in `src/cli/program.ts` registered SIGTERM/SIGINT listeners, which disables Node/Bun's default terminate action. A signal arriving before the resident installed its own shutdown handler was swallowed.
+
+Fix: the pid-file cleanup handler now exits the process itself when `residentShutdownHandlerInstalled()` (`src/core/resident-shutdown-handler.ts`) is false. `stopProcess` removes the pid file after a confirmed exit when it still names the stopped pid (`removePidFileIfOwnedBy` in `src/cli/detach.ts`). Covers both `serve` and `daemon`.
+
+Guidance: registering a signal listener replaces default termination; every listener must exit when nothing else will handle the signal.

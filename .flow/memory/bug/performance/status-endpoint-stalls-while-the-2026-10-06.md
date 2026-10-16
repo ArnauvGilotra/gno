@@ -3,12 +3,13 @@ title: Status endpoint stalls while the resident is busy
 date: "2026-10-06"
 track: bug
 category: performance
-module: src/serve/server.ts
+module: src/serve/resident-runtime.ts
 tags: [soak, fn-203, fn-208]
 problem_type: performance
 symptoms: "/api/resident/status p99 0.3-5.8 s under load, 1 ms idle"
-root_cause: (main-thread blocking under load - unprofiled)
+root_cause: "per-status MIN/MAX vector scan, config re-parse on every read, and unsliced graph projection blocked the event loop"
 resolution_type: fix
+last_audited: "2026-10-16"
 ---
 
 # Status endpoint stalls while the resident is busy
@@ -34,3 +35,15 @@ Repro: `bun run soak --tier torture --classes sleep-wake,sse-flood,config-edit -
 - **R1:** Profile the resident in each scenario above (`bun --cpu-prof`) and name the synchronous work that holds the event loop.
 - **R2:** Bound that work: yield between batches, move it off the main thread, or split long transactions, so status p99 stays within the I4 limit in all five scenarios.
 - **R3:** Set the I4 limit in `scripts/soak/config.ts` from a measured healthy baseline (the open fn-203 decision) and record it.
+
+## Resolution (52022274, #292, fn-208)
+
+Profiling named three kinds of synchronous work holding the event loop:
+
+- Every status build checked stored embedding dimensions with a MIN/MAX scan over every vector. Migration `035-vector-length-index.ts` indexes `(model, length(embedding))`, so each bound is one seek (`src/store/vector/freshness.ts`).
+- Every resident read re-read and re-parsed the config file. A stat stamp (inode, size, mtime, ctime) in `src/serve/resident-runtime.ts` skips the reload while the file is unchanged.
+- Graph projection after a burst ran one long incoming-link statement. It now resolves links in chunks and yields through `createTimeSlicer` (`src/core/time-slice.ts`) whenever a slice passes 20 ms (`src/ingestion/graph-reconciliation.ts`).
+
+The soak I4 limit in `scripts/soak/config.ts` is `statusP99Ms: 150` / `statusMaxMs: 1_000`, set from a healthy baseline of worst p99 65 ms. `GNO_SOAK_CPU_PROF=<dir>` profiles each soak resident.
+
+Guidance: keep status-path work O(1) through indexes, cache config reads behind a stat stamp, and time-slice long synchronous loops.

@@ -7,8 +7,9 @@ module: src/serve/public/components/BootstrapStatus.tsx
 tags: [qa, fn-213-resident-crash-on-old-bun-and-mcp, web-ui]
 problem_type: ui
 symptoms: At 375px the Bootstrap & Storage 'Download missing models' button ends at 382px; the page scrolls sideways by 7px
-root_cause: (observed via live QA — unconfirmed)
+root_cause: non-wrapping justify-between header row with an unshrinkable text column pushed the button past 375px
 resolution_type: fix
+last_audited: "2026-10-16"
 related_to: [bug/ui/publisher-cannot-finish-encrypted-2026-09-06]
 ---
 
@@ -34,3 +35,7 @@ The button's right edge is at 382 px on a 375 px viewport (`document.documentEle
 
 ## Traceability
 - R-IDs: none (pre-existing; the button dates from 872bbdd5, 2026-03-22)   scenario: S2   driver_rung: agent-browser   viewport: 375x812
+
+## Resolution (fadedd0f, #298)
+
+The header row was a non-wrapping flex row (`justify-between`) with an unshrinkable text column, so the button kept its full width past a 375 px viewport. Fix in `src/serve/public/components/BootstrapStatus.tsx`: stack the header on phones (`flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between`), add `min-w-0` on the text column and `self-start` on the button, and regenerate `globals.built.css` so the new utilities ship.

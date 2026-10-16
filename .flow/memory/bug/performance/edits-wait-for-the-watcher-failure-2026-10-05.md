@@ -7,8 +7,9 @@ module: src/serve/watch-service-events.ts
 tags: [qa, fn-202-watcher-retries-a-failing-collection, watcher]
 problem_type: performance
 symptoms: A healthy edit is indexed 12-14 s late after 20 s of failures elsewhere in the collection; up to 5 min at the cap
-root_cause: (observed via live QA — unconfirmed)
+root_cause: "scheduleFlush returned early while a failure-backoff retry timer was armed, so fresh events waited out another path's backoff"
 resolution_type: fix
+last_audited: "2026-10-16"
 ---
 
 ## Problem
@@ -34,3 +35,9 @@ The healthy edit is found 13.7 s (run 1) and 12.0 s (run 2) after the write. `sc
 
 ## Traceability
 - R-IDs: [R1]   scenario: S4   driver_rung: CLI/REST   viewport: n/a
+
+## Resolution (573989ba, #285, fn-202)
+
+`scheduleFlush` (`src/serve/watch-service-events.ts`) no longer returns early behind a failure-backoff retry timer: when a fresh event arrives for the collection (`host.freshEvents`), the backoff timer is dropped and the flush runs on the normal debounce. The failure count persists until a flush succeeds. Lease ("fixed") retries are not pre-empted.
+
+Guidance: a failing path's backoff must never delay unrelated fresh edits in the same collection.

@@ -9,7 +9,7 @@ problem_type: integration
 symptoms: Rendered projects/roadmap.md link navigates to origin /projects/roadmap.md and returns 404
 root_cause: (observed via live QA - unconfirmed)
 resolution_type: fix
-last_audited: "2026-10-05"
+last_audited: "2026-10-16"
 ---
 
 ## Problem

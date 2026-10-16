@@ -9,7 +9,7 @@ problem_type: test-failure
 symptoms: capture request-ID test times out at 5 s on Windows CI; CLI exits 2 after bun kills the PowerShell child
 root_cause: first-in-process PowerShell DACL helper cold start (2.5-5+ s) on a fresh ledger dir
 resolution_type: fix
-last_audited: "2026-10-05"
+last_audited: "2026-10-16"
 ---
 
 ## Problem

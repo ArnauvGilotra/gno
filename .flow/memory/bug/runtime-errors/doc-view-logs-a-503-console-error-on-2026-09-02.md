@@ -3,13 +3,13 @@ title: Doc View logs a 503 console error on every open without vectors
 date: "2026-09-02"
 track: bug
 category: runtime-errors
-module: src/serve/routes/api.ts
+module: src/serve/routes/links.ts
 tags: [qa, fn-136-pdf-viewing-over-a-remote-link, web-ui]
 problem_type: runtime-error
 symptoms: /api/doc/:id/similar returns 503 on an index without embeddings; one console error per document open
 root_cause: (observed via live QA — unconfirmed)
 resolution_type: fix
-last_audited: "2026-10-05"
+last_audited: "2026-10-16"
 ---
 
 ## Problem

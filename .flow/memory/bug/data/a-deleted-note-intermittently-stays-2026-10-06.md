@@ -3,12 +3,13 @@ title: A deleted note intermittently stays indexed
 date: "2026-10-06"
 track: bug
 category: data
-module: src/serve/watch-service.ts
+module: src/serve/watch-reconciliation.ts
 tags: [soak, fn-203, fn-209]
 problem_type: data
 symptoms: "a deleted note stays active in the index beyond 3 minutes, intermittently"
-root_cause: (timing-dependent watcher miss - unconfirmed)
+root_cause: snapshot diff removed only paths the snapshot knew; notes indexed from exact events after the baseline survived a moved or deleted parent folder
 resolution_type: fix
+last_audited: "2026-10-16"
 ---
 
 # A deleted note intermittently stays indexed
@@ -27,3 +28,11 @@ A rerun of the same smoke seed converged, so the miss is timing dependent. Likel
 - **R1:** Reproduce reliably (loop the soak classes above, or a focused watcher test for delete-then-recreate of the parent directory and for events during suspension) and confirm the mechanism.
 - **R2:** Fix it so a deletion is always reflected, with a regression test for the confirmed mechanism.
 - **R3:** 20 consecutive soak smoke runs and torture `sleep-wake` runs converge with no extra documents.
+
+## Resolution (a331392a, #293, fn-209)
+
+Root cause confirmed: a note indexed from its own exact watcher event after the snapshot baseline is in the store but not in the snapshot. When its folder is moved or deleted, the watcher reports only the folder, so the snapshot diff removes only the children it knew about and the newer note stays active.
+
+Fix in `src/serve/watch-reconciliation.ts`: removals also cover store-known active paths under the dirty directory hints that are gone from disk. Each candidate is confirmed with `lstat`; a failed check never counts as a delete, and a descendant overflow escalates to a full reconcile.
+
+Guidance: watcher deletion handling must not rely on the snapshot alone; anything the store knows under a changed directory needs its own on-disk check.
