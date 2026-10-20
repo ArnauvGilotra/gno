@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `gno_remember` over HTTP MCP no longer fails with 500 when it carries `refs`: the egress check read provenance refs such as `sp:site/doc` as document references in unknown collections. The write is still scoped by its `collection`.
 
+### Fixed
+
+- Collection egress checks now work with several hundred collections. An HTTP MCP call failed with a 500 error once more than 128 collections were configured, and an unscoped call (one that names no collection, so it is checked against all of them) was refused with `403 COLLECTION_LIMIT_EXCEEDED` above 64. Every egress decision, policy scope, policy lineage and `gno_egress_check` scope now shares one bound of 1024 collections (`EGRESS_MAX_COLLECTIONS`). Above it, an HTTP MCP call is refused with `403 COLLECTION_LIMIT_EXCEEDED` instead of a 500. The policy outcome is unchanged: the most restrictive collection in the scope still decides. The output schemas' `egressLineage.sources` now allow up to 1024 entries (was 128).
+
 ## [2.12.0] - 2026-10-12
 
 ### Changed

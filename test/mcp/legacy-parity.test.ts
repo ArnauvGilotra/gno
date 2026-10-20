@@ -44,7 +44,9 @@
  *    `gno_search` exact-text guidance. fn-217 closes every tool input
  *    (`additionalProperties: false`), dropped from both sides of the frozen
  *    comparison. The subject-owned memory change adds the optional `refs`
- *    property on exactly `gno_remember`. All are
+ *    property on exactly `gno_remember`. The collection egress limits change widens
+ *    `gno_egress_check.collections` from 64 to the shared
+ *    `EGRESS_MAX_COLLECTIONS` bound. All are
  *    pinned by the current golden and removed only for the historical
  *    comparison.
  */
@@ -450,6 +452,27 @@ function withoutCollectionsAllowlist(tool: WireTool): WireTool {
   };
 }
 
+/**
+ * The collection egress limits change widened `gno_egress_check.collections`
+ * to the shared `EGRESS_MAX_COLLECTIONS` bound; restore the historical cap of
+ * 64 for the frozen comparison only.
+ */
+function withoutEgressScopeCapExtension(tool: WireTool): WireTool {
+  if (tool.name !== "gno_egress_check") return tool;
+  const properties = tool.inputSchema.properties as Record<string, unknown>;
+  const collections = properties.collections as Record<string, unknown>;
+  return {
+    ...tool,
+    inputSchema: {
+      ...tool.inputSchema,
+      properties: {
+        ...properties,
+        collections: { ...collections, maxItems: 64 },
+      },
+    },
+  };
+}
+
 function normalizeToolsList(line: string): string {
   line = withHistoricalLadderDescriptions(line);
   const envelope = parseJsonRpc<ToolsListEnvelope>(line);
@@ -470,7 +493,11 @@ function normalizeToolsList(line: string): string {
               withoutSdkDeltas(
                 withoutTypedFilterExtension(
                   withoutRequestIdExtension(
-                    withoutMemoryRefsExtension(withoutAuditCapExtension(withoutCollectionsAllowlist(tool)))
+                    withoutMemoryRefsExtension(
+                      withoutAuditCapExtension(
+                        withoutEgressScopeCapExtension(withoutCollectionsAllowlist(tool))
+                      )
+                    )
                   )
                 )
               ) as Record<string, unknown>
