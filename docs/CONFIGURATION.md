@@ -967,19 +967,6 @@ remove` deletes them at once.
 
 ### Collection Fields
 
-| Field                | Type            | Default     | Description                                                                         |
-| -------------------- | --------------- | ----------- | ----------------------------------------------------------------------------------- |
-| `name`               | string          | required    | Unique identifier (lowercase)                                                       |
-| `path`               | string          | required    | Absolute path to directory                                                          |
-| `pattern`            | glob            | `**/*`      | File matching pattern                                                               |
-| `include`            | array           | see below   | Extension allowlist                                                                 |
-| `exclude`            | array           | see below   | Patterns to skip                                                                    |
-| `updateCmd`          | string          | -           | Shell command before indexing                                                       |
-| `updateCmdTimeoutMs` | number          | `600000`    | Stop `updateCmd` after this many milliseconds                                       |
-| `languageHint`       | string          | -           | BCP-47 language code                                                                |
-| `models`             | object          | -           | Per-collection model overrides                                                      |
-| `workspaceRoot`      | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces)              |
-| `access`             | object          | -           | Who non-admin gateway principals serve; see [Collection access](#collection-access) |
 | Field                | Type            | Default     | Description                                                                                         |
 | -------------------- | --------------- | ----------- | --------------------------------------------------------------------------------------------------- |
 | `name`               | string          | required    | Unique identifier (lowercase)                                                                       |
@@ -992,6 +979,7 @@ remove` deletes them at once.
 | `languageHint`       | string          | -           | BCP-47 language code                                                                                |
 | `models`             | object          | -           | Per-collection model overrides                                                                      |
 | `workspaceRoot`      | path or `false` | auto-detect | Link workspace for wiki links; see [Link workspaces](#link-workspaces)                              |
+| `access`             | object          | -           | Who non-admin gateway principals serve; see [Collection access](#collection-access)                 |
 | `linkPolicy`         | object          | -           | Opt-in audit link rules; see [Link policy and path rules](#link-policy-and-path-rules)              |
 | `pathPattern`        | regex           | -           | Opt-in audit rule for document paths; see [Link policy and path rules](#link-policy-and-path-rules) |
 
