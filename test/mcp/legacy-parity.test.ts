@@ -495,7 +495,9 @@ function normalizeToolsList(line: string): string {
                   withoutRequestIdExtension(
                     withoutMemoryRefsExtension(
                       withoutAuditCapExtension(
-                        withoutEgressScopeCapExtension(withoutCollectionsAllowlist(tool))
+                        withoutEgressScopeCapExtension(
+                          withoutCollectionsAllowlist(tool)
+                        )
                       )
                     )
                   )
