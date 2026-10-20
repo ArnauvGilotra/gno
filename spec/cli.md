@@ -1136,6 +1136,31 @@ list of `<system>:<reference>` strings, or whose metadata is invalid
 (`invalid`). Evidence kind `required-metadata`, summary
 `derived_from:<missing|invalid>`. Non-admin gateway principals are not served
 these documents.
+Three opt-in link-category rules run only when an audited document's
+collection sets the matching key; with none set the rule list, findings and
+fingerprints are unchanged. Each fails (exit 4) on findings, all `warning`:
+
+- `links.policy` (collection `linkPolicy.mayLinkTo: [names]`): a link from a
+  document in that collection to a document in another collection not named
+  in `mayLinkTo`. The target collection is the resolved target's collection,
+  or the prefix of an explicit `collection:` link that does not resolve.
+  Links within the collection are always allowed; ambiguous and other
+  unresolved links are not policy findings. Evidence kind `link-policy`; its
+  `detail` JSON carries `sourceCollection`, `targetCollection`, `target` and
+  the sorted `mayLinkTo`.
+- `links.external-url` (collection `linkPolicy.externalUrls: deny`): a
+  `scheme://` URL or `mailto:` address in the indexed text of a Markdown
+  document, outside frontmatter, code and HTML comments. `gno://` URIs are
+  internal and allowed. Trailing sentence punctuation is not part of the URL.
+  Evidence kind `external-url`; location is the line and column in the
+  indexed text. A Markdown document in such a collection whose indexed text
+  is missing (not yet mirrored, or its content row is gone) cannot be
+  checked, so it is a finding too: evidence kind `external-url-unchecked`,
+  no location. The rule never passes a document it could not read.
+- `paths.pattern` (collection `pathPattern`): a document whose
+  collection-relative path does not match the collection's regex (Unicode
+  flag; unanchored unless the pattern anchors itself). Evidence kind
+  `path-pattern` with the `pattern` in `detail`.
 
 The JSON contract is versioned as `gno://schemas/audit-report@1.0`. Finding IDs
 are stable SHA-256 identities derived from rule, normalized subject/location,
