@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A slow access hook no longer queues every MCP caller behind it. GNO runs MCP tool calls one at a time, and the hook calls happened inside that turn, so each caller waited for every other caller's hook answers: with a 250 ms hook, 20 concurrent users saw a p95 of about 11 s. A tool call now waits for its hook answer without holding the turn and takes it back before it continues, so hook waits overlap while tool code still runs one call at a time. New `gateway.accessHook.maxConcurrent` (default 16) caps the hook calls in flight; further calls queue in order. `timeoutMs` covers queue time: a call still queued at its deadline is not sent and denies, as does any later answer. Verdicts and fail-closed behavior do not change.
 - `gno convert <file>` converts one PDF, Office or other supported file to Markdown without indexing it. The Markdown is the same as indexing would store. `--json` adds the content hash, warnings and detected type; `--max-bytes` refuses larger files before reading them, with a `TOO_LARGE` error.
+- `gno ls --filter '<JSON>'` lists the documents whose typed metadata matches a predicate, using the same predicate as `gno search --filter`. Paired with the documented `derived_from` convention (a list of `<system>:<reference>` strings in `gno.metadata`), it lists every note built from a given source, for example `gno ls --filter '{"op":"in","key":"derived_from","values":["sp:drives/d1/items/i1"]}'`.
 
 ## [2.12.0] - 2026-10-12
 
