@@ -318,7 +318,6 @@ Mixed evidence and derived artifacts use the most restrictive participating
 collection. Explicit partial checks disclose every omitted collection and
 reason; normal operations never silently drop restricted evidence.
 
-<<<<<<< HEAD
 ## Collection access
 
 Only for a shared gateway with named principals (`gateway.principals`, see
@@ -379,14 +378,13 @@ user behind it. GNO sends at most `maxConcurrent` hook calls at once
 when a call joins that queue, so time spent waiting counts: a call still
 queued at its deadline is never sent and counts as "no", like a late answer.
 Size `maxConcurrent` for your peak load so queueing stays short.
-=======
+
 One egress decision covers at most 1024 collections. That bound applies to an
 unscoped request, which is checked against every configured collection, and to
 an explicit `gno_egress_check` scope, so an index can keep one collection per
 access boundary for several hundred boundaries. Above 1024 configured
 collections, an unscoped HTTP MCP call is refused with `403
 COLLECTION_LIMIT_EXCEEDED`; scope the call or split the index.
->>>>>>> origin/feat/egress-collection-limits
 
 ## Link workspaces
 
