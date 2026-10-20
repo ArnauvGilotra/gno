@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `gno convert <file>` converts one PDF, Office or other supported file to Markdown without indexing it. The Markdown is the same as indexing would store. `--json` adds the content hash, warnings and detected type; `--max-bytes` refuses larger files before reading them, with a `TOO_LARGE` error.
 - `gno ls --filter '<JSON>'` lists the documents whose typed metadata matches a predicate, using the same predicate as `gno search --filter`. Paired with the documented `derived_from` convention (a list of `<system>:<reference>` strings in `gno.metadata`), it lists every note built from a given source, for example `gno ls --filter '{"op":"in","key":"derived_from","values":["sp:drives/d1/items/i1"]}'`.
 - Collections can opt in to three new `gno audit links` rules. `linkPolicy.mayLinkTo` lists the other collections a collection's documents may link to, and any other cross-collection link is a finding. `linkPolicy.externalUrls: deny` reports external URLs in its Markdown pages, and reports a page whose indexed text is missing as unchecked instead of passing it. `pathPattern` is a regex every document path in the collection must match. Without these keys, audit output is unchanged.
+- Memory can belong to one user. When a gateway principal asserts a subject, `gno_remember` adds a server-set `subject:<hash>` scope to the fact and `gno_recall` returns only that user's facts; callers cannot send `subject:` scopes, and another user's facts never show up in recall, candidates or supersede. The same principal can attach up to 20 `<system>:<reference>` `refs` to a fact; they are stored in the fact file and come back on recall, also after a reindex. Without `principals`, memory behaves exactly as before.
+
+### Fixed
+
+- `gno_remember` over HTTP MCP no longer fails with 500 when it carries `refs`: the egress check read provenance refs such as `sp:site/doc` as document references in unknown collections. The write is still scoped by its `collection`.
 
 ## [2.12.0] - 2026-10-12
 

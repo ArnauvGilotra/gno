@@ -167,6 +167,7 @@ async function checkBm25Strength(
     allowedMirrorHashes?: string[];
     exclude?: string[];
     memoryScopesAny?: string[];
+    memoryScopeRequired?: string;
     excludeSuperseded?: boolean;
   }
 ): Promise<boolean> {
@@ -182,6 +183,7 @@ async function checkBm25Strength(
     excludeMetadata: true,
     semanticMetadata: true,
     memoryScopesAny: options?.memoryScopesAny,
+    memoryScopeRequired: options?.memoryScopeRequired,
     excludeSuperseded: options?.excludeSuperseded,
     tagsAll: options?.tagsAll,
     tagsAny: options?.tagsAny,
@@ -244,6 +246,7 @@ async function searchFtsChunks(
     allowedMirrorHashes?: string[];
     exclude?: string[];
     memoryScopesAny?: string[];
+    memoryScopeRequired?: string;
     excludeSuperseded?: boolean;
   }
 ): Promise<FtsChunksResult> {
@@ -257,6 +260,7 @@ async function searchFtsChunks(
     excludeMetadata: true,
     semanticMetadata: true,
     memoryScopesAny: options.memoryScopesAny,
+    memoryScopeRequired: options.memoryScopeRequired,
     excludeSuperseded: options.excludeSuperseded,
     exclude: options.exclude,
     allowedMirrorHashes: options.allowedMirrorHashes,
@@ -552,6 +556,7 @@ async function searchHybridWithHydration(
           collections: options.collections,
           lang: options.lang,
           memoryScopesAny: options.memoryFilter?.scopes,
+          memoryScopeRequired: options.memoryFilter?.requiredScope,
           excludeSuperseded: options.memoryFilter?.excludeSuperseded,
           exclude: options.exclude,
           allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
@@ -602,6 +607,7 @@ async function searchHybridWithHydration(
     collection: options.collection,
     collections: options.collections,
     memoryScopesAny: options.memoryFilter?.scopes,
+    memoryScopeRequired: options.memoryFilter?.requiredScope,
     excludeSuperseded: options.memoryFilter?.excludeSuperseded,
     // Graph neighbours hydrate through this eligibility, so the internal
     // allowlist bounds them as well as the vector legs.
@@ -625,6 +631,7 @@ async function searchHybridWithHydration(
   const bm25Result = await searchFtsChunks(store, query, {
     limit: limit * 2 * retrievalMultiplier,
     memoryScopesAny: options.memoryFilter?.scopes,
+    memoryScopeRequired: options.memoryFilter?.requiredScope,
     excludeSuperseded: options.memoryFilter?.excludeSuperseded,
     exclude: options.exclude,
     allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,
@@ -666,6 +673,7 @@ async function searchHybridWithHydration(
         searchFtsChunks(store, variant, {
           limit: limit * retrievalMultiplier,
           memoryScopesAny: options.memoryFilter?.scopes,
+          memoryScopeRequired: options.memoryFilter?.requiredScope,
           excludeSuperseded: options.memoryFilter?.excludeSuperseded,
           exclude: options.exclude,
           allowedMirrorHashes: options.retrievalScope?.allowedMirrorHashes,

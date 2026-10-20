@@ -183,6 +183,7 @@ async function searchVectorWithEmbeddingOwned(
         collection: options.collection,
         collections: options.collections,
         memoryScopesAny: options.memoryFilter?.scopes,
+        memoryScopeRequired: options.memoryFilter?.requiredScope,
         excludeSuperseded: options.memoryFilter?.excludeSuperseded,
         relPathPrefix: options.retrievalScope?.relPathPrefix,
         tagsAll: options.tagsAll,

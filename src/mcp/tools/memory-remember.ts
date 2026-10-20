@@ -13,12 +13,16 @@ import { z } from "zod";
 import type { ToolContext } from "../server";
 
 import { type RememberResult } from "../../core/memory";
-import { MEMORY_MAX_FACT_BYTES } from "../../core/memory-record";
+import {
+  MEMORY_MAX_FACT_BYTES,
+  MEMORY_MAX_REFS,
+} from "../../core/memory-record";
 import { formatRequestReceiptLine } from "../../core/request-receipts";
 import { assertMemoryWritable } from "./access";
 import { runTool, type ToolResult } from "./index";
 import {
   createMcpMemoryService,
+  mayAttachMemoryRefs,
   type McpMemorySessionInfo,
   memoryScopesInputSchema,
   resolveMcpMemoryIdentity,
@@ -95,6 +99,13 @@ export const rememberInputSchema = z.object({
     .min(1)
     .optional()
     .describe("Free-text evidence for the fact (where it came from)"),
+  refs: z
+    .array(z.string().trim().min(1))
+    .max(MEMORY_MAX_REFS)
+    .optional()
+    .describe(
+      `<system>:<reference> refs stored with the fact and returned by gno_recall (at most ${MEMORY_MAX_REFS}; only a gateway principal allowed to assert a subject may set them)`
+    ),
   requestId: requestIdInputSchema.optional(),
 });
 
@@ -133,6 +144,9 @@ export function formatRememberResult(result: RememberResult): string {
       if (result.record.supersedes.length > 0) {
         lines.push(`Supersedes: ${result.record.supersedes.join(", ")}`);
       }
+      if (result.record.refs) {
+        lines.push(`Refs: ${result.record.refs.join(", ")}`);
+      }
       break;
   }
   lines.push(matching);
@@ -157,6 +171,11 @@ export function handleRemember(
         );
       }
       assertMemoryWritable(ctx, args.collection);
+      if (args.refs !== undefined && !mayAttachMemoryRefs(ctx)) {
+        throw new Error(
+          "MEMORY_REFS_FORBIDDEN: refs may be set only by a gateway principal with mayAssertSubject"
+        );
+      }
       const service = createMcpMemoryService(ctx);
       let result: RememberResult;
       try {
@@ -171,6 +190,7 @@ export function handleRemember(
           receipt: args.receipt,
           derivedFrom: args.derivedFrom,
           source: args.source,
+          refs: args.refs,
           requestId: args.requestId,
         });
       } catch (error) {
